@@ -65,21 +65,42 @@ int main(int ac, char **av)
 
 	} else {
 		char buffer[LOG_BUFFER_LEN];
+		FILE* fptr;
+		fptr = fopen("log.txt", "wb");
 		close(fd[1]);
+		int n;
 
 		while (1) {
-			read(fd[0], buffer, LOG_BUFFER_LEN);
 
-			FILE* fptr;
-			fptr = fopen("log.txt", "a");
-			fwrite(buffer, 1, LOG_BUFFER_LEN, fptr);
-			fclose(fptr);
+			if ((n = read(fd[0], buffer, LOG_BUFFER_LEN)) > 0) {
+				FILE* fptr;
+				fptr = fopen("log.txt", "a");
+				//fprintf(fptr, "%s\n", buffer);
+				fwrite(buffer, 1, n, fptr);
+				fclose(fptr);
+			}
+			
 		}
 
 		close(fd[0]);
 		exit(1);
-		
+
 	}
+}
+
+void writeLog(const char *format, ...)
+{
+	char logBuffer[LOG_BUFFER_LEN];
+	va_list args;
+	
+	sprintf(logBuffer, "%s: ", getCurrentTime());
+	va_start(args, format);
+	vsprintf(logBuffer + strlen(logBuffer), format, args);
+	va_end(args);
+	sprintf(logBuffer + strlen(logBuffer), "\n");
+
+	write(fd[1], logBuffer, strlen(logBuffer));
+
 }
 
 char *getCurrentTime()
@@ -203,18 +224,6 @@ void deliverHTTP(int connfd)
 	close(connfd);
 }
 
-void writeLog(const char *format, ...)
-{
-	char logBuffer[LOG_BUFFER_LEN];
-	va_list args;
-	
-	va_start(args, format);
-	vsprintf(logBuffer, format, args);
-	va_end(args);
-
-	write(fd[1], logBuffer, strlen(logBuffer)+1);
-
-}
 
 void startServer(uint16_t portNum)
 {
