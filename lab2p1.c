@@ -40,38 +40,46 @@ enum
 
 void startServer(uint16_t portNum);
 void formHTTPResponse(char *buffer, uint16_t maxBufferLen, uint16_t returnCode, 
-		char *returnMessage, char *body, uint16_t bodyLength);
+	char *returnMessage, char *body, uint16_t bodyLength);
 void deliverHTTP(int connfd);
 char *getCurrentTime();
 void writeLog(const char *format, ...);
 void parseHTTP(const char *buffer, int *method, char *filename);
 
+//global varaible for file descriptor 
 int fd[2];
-char buffer[LOG_BUFFER_LEN];
 
 int main(int ac, char **av)
 {
+
 	pipe(fd);
 
 	if (fork() != 0) {
 		int status;
+
 		close(fd[0]);
 		startServer(PORTNUM);
 
+		close(fd[1]);
 		wait(&status);
+
 	} else {
+		char buffer[LOG_BUFFER_LEN];
+		close(fd[1]);
+
 		while (1) {
-			close(fd[1]);
 			read(fd[0], buffer, LOG_BUFFER_LEN);
-			close(fd[0]);
 
 			FILE* fptr;
 			fptr = fopen("log.txt", "a");
 			fwrite(buffer, 1, LOG_BUFFER_LEN, fptr);
 			fclose(fptr);
 		}
-	}
 
+		close(fd[0]);
+		exit(1);
+		
+	}
 }
 
 char *getCurrentTime()
@@ -87,10 +95,10 @@ char *getCurrentTime()
 }
 
 void formHTTPResponse(char *buffer, uint16_t maxBufferLen, uint16_t returnCode, 
-		char *returnMessage, char *body, uint16_t bodyLength)
+	char *returnMessage, char *body, uint16_t bodyLength)
 {
 	sprintf(buffer, "HTTP/1.1 %d %s\n", returnCode,
-			returnMessage);
+		returnMessage);
 	sprintf(buffer, "%sDate: %s\n", buffer, getCurrentTime());
 	sprintf(buffer, "%sServer: CS2106/1.1.0\n", buffer);
 	sprintf(buffer, "%sContent-Length: %d\n", buffer, bodyLength);
@@ -105,18 +113,18 @@ void readHTML(FILE *fp, char *fileBuffer, uint16_t maxBufferLen)
 	if(fp != NULL)
 	{
 		/*char lineBuffer[LINE_BUFFER_LEN];
-		  uint16_t currCharCount=0;
+		uint16_t currCharCount=0;
 
 		// Zero the buffer first
 		fileBuffer[0]='\0';*/
 
 		fread(fileBuffer, sizeof(char), maxBufferLen, fp);
 		/*while(!feof(fp) && currCharCount < maxBufferLen)
-		  {
-		  fgets(lineBuffer, LINE_BUFFER_LEN, fp);
-		  sprintf(fileBuffer, "%s%s", fileBuffer, lineBuffer);
-		  currCharCount += strlen(lineBuffer);
-		  } // while*/
+		{
+			fgets(lineBuffer, LINE_BUFFER_LEN, fp);
+			sprintf(fileBuffer, "%s%s", fileBuffer, lineBuffer);
+			currCharCount += strlen(lineBuffer);
+		} // while*/
 	}
 
 }
@@ -144,7 +152,7 @@ void parseHTTP(const char *buffer, int *method, char *filename)
 				*method = PUT;
 			else
 				*method = GET;
-
+	
 	printf("Copying filename\n");
 	strncpy(filename, fname, MAX_FILENAME_LEN);
 	printf("Done. Filename is %s\n", filename);
@@ -197,15 +205,14 @@ void deliverHTTP(int connfd)
 
 void writeLog(const char *format, ...)
 {
+	char logBuffer[LOG_BUFFER_LEN];
 	va_list args;
-
+	
 	va_start(args, format);
-	vsprintf(buffer, format, args);
+	vsprintf(logBuffer, format, args);
 	va_end(args);
 
-	write(fd[1], buffer, strlen(buffer)+1);
-	close(fd[1]);
-
+	write(fd[1], logBuffer, strlen(logBuffer)+1);
 
 }
 
@@ -245,10 +252,10 @@ void startServer(uint16_t portNum)
 
 	while(1)
 	{
-	//	int result = fork();
 		connfd = accept(listenfd, (struct sockaddr *) NULL, NULL);
-		writeLog("Connection received.");
-
-		deliverHTTP(connfd);
+		if(fork() != 0){
+			writeLog("Connection received.");
+			deliverHTTP(connfd);
+		}
 	}
 }
