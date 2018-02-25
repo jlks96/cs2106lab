@@ -46,62 +46,62 @@ char *getCurrentTime();
 void writeLog(const char *format, ...);
 void parseHTTP(const char *buffer, int *method, char *filename);
 
-//global varaible for file descriptor 
+//global variable for file descriptor 
 int fd[2];
 
 int main(int ac, char **av)
 {
+    pipe(fd);//setup the pipe
 
-	pipe(fd);
+    if (fork() != 0) {
 
-	if (fork() != 0) {
-		int status;
+        int status;   //parent will write to the pipe
 
-		close(fd[0]);
-		startServer(PORTNUM);
+        close(fd[0]); //close the input end of pipe before writing to pipe
+        startServer(PORTNUM);
 
-		close(fd[1]);
-		wait(&status);
+        close(fd[1]);
+        wait(&status);
+    } else {
 
-	} else {
-		char buffer[LOG_BUFFER_LEN];
-		FILE* fptr;
-		fptr = fopen("log.txt", "wb");
-		close(fd[1]);
-		int n;
+        char buffer[LOG_BUFFER_LEN];   //create a buffer
+        FILE* fptr;                    //fptr points to the log.txt file
+        fptr = fopen("log.txt", "wb"); //first open the log.txt to clear any previous log
+        fclose(fptr);                  //close file pointer
+        close(fd[1]);                  //close output end of pipe before reading
+        int n;
 
-		while (1) {
+        while (1) { //infinite loop to try to read from pipe
 
-			if ((n = read(fd[0], buffer, LOG_BUFFER_LEN)) > 0) {
-				FILE* fptr;
-				fptr = fopen("log.txt", "a");
-				//fprintf(fptr, "%s\n", buffer);
-				fwrite(buffer, 1, n, fptr);
-				fclose(fptr);
-			}
-			
-		}
+            if ((n = read(fd[0], buffer, LOG_BUFFER_LEN)) > 0) {
+                //read from the pipe into buffer
+                //and if pipe is not empty
+                fptr = fopen("log.txt", "a");   //open the log.txt file in append mode
+                fwrite(buffer, 1, n, fptr);     //write from the buffer to log.txt
+                fclose(fptr);                   //close the fptr
+            }
 
-		close(fd[0]);
-		exit(1);
-
-	}
+        }
+        close(fd[0]);
+        exit(1);
+    }
 }
 
 void writeLog(const char *format, ...)
 {
-	char logBuffer[LOG_BUFFER_LEN];
-	va_list args;
-	
-	sprintf(logBuffer, "%s: ", getCurrentTime());
-	va_start(args, format);
-	vsprintf(logBuffer + strlen(logBuffer), format, args);
-	va_end(args);
-	sprintf(logBuffer + strlen(logBuffer), "\n");
+    char logBuffer[LOG_BUFFER_LEN];
+    va_list args;
 
-	write(fd[1], logBuffer, strlen(logBuffer));
+    sprintf(logBuffer, "%s: ", getCurrentTime()); //include current time in log
+    va_start(args, format);
+    vsprintf(logBuffer + strlen(logBuffer), format, args); //append message to log
+    va_end(args);
+    sprintf(logBuffer + strlen(logBuffer), "\n"); //append a new line character at the end
+
+    write(fd[1], logBuffer, strlen(logBuffer));   //write from buffer to the pipe
 
 }
+
 
 char *getCurrentTime()
 {
@@ -262,8 +262,14 @@ void startServer(uint16_t portNum)
 	while(1)
 	{
 		connfd = accept(listenfd, (struct sockaddr *) NULL, NULL);
-		if(fork() != 0){
+		int result = fork();
+
+		if(result != 0){ 
+			//parent will write to log and move on to the next loop, ready for next connection
 			writeLog("Connection received.");
+
+		} else { 
+			//child will execute deliverHTTP will might be blocked by read()
 			deliverHTTP(connfd);
 		}
 	}
