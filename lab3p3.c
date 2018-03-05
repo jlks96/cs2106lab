@@ -49,6 +49,7 @@ void deliverHTTP(int connfd);
 char *getCurrentTime();
 void writeLog(const char *format, ...);
 void parseHTTP(const char *buffer, int *method, char *filename);
+void *log(void *i);
 
 // File pointer for the log. Your logging code should write to this
 FILE *logfptr;
@@ -68,8 +69,39 @@ int main(int ac, char **av)
 		fprintf(stderr, "Cannot open log file\n");
 		exit(-1);
 	}
+
+	fclose(logfptr);
+	
+	int *i;
+
+	//create a thread for logger
+	pthread_t loggerThread;
+	pthread_create(&loggerThread, NULL, log, (void *) i);
+
 	startServer(PORTNUM);
 }
+
+//void * function for thread
+void *log(void *i)
+{
+	//an infinite loop
+	while(1) {
+		//if logReady is set
+		if(logReady) {
+			
+			//read from buffer and write to file
+			FILE* logfptr = fopen("webserver.log", "a");
+			fputs(logBuffer, logfptr);
+			fflush(logfptr);
+			fclose(logfptr);
+
+			//reset logReady
+			logReady = 0;
+			
+		}
+	}
+}
+
 
 char *getCurrentTime()
 {
@@ -115,7 +147,6 @@ void readHTML(FILE *fp, char *fileBuffer, uint16_t maxBufferLen)
 		  currCharCount += strlen(lineBuffer);
 		  } // while*/
 	}
-
 }
 
 void parseHTTP(const char *buffer, int *method, char *filename)
@@ -202,26 +233,29 @@ void deliverHTTP(int connfd)
 void writeLog(const char *format, ...)
 {
 	char myBuffer[LOG_BUFFER_LEN];
+
 	va_list args;
 
 	va_start(args, format);
 	vsprintf(myBuffer, format, args);
 	va_end(args);
 
-	sprintf(logBuffer, "%s: %s", getCurrentTime(), myBuffer);
+	sprintf(logBuffer, "%s: %s\n", getCurrentTime(), myBuffer);//add new line character for better formatting
 	logReady=1;
 }
 
+//void * function for connection thread
 void *child(void *i)
 {
 	writeLog("Connection received.");
 	deliverHTTP(i);
 }
+
 void startServer(uint16_t portNum)
 {
 	static int listenfd, connfd;
 	static struct sockaddr_in serv_addr;
-	pthread_t thread[MAX_CONNECTIONS];
+	pthread_t thread[MAX_CONNECTIONS];//initialise an array of thread type
 
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -251,11 +285,15 @@ void startServer(uint16_t portNum)
 
 	writeLog("Web server started at port number %d", portNum);
 
+	//for the number of maximum connections
 	for (int i = 0; i < MAX_CONNECTIONS; i++)
 	{
-
+		//create the client socket
 		connfd = accept(listenfd, (struct sockaddr *) NULL, NULL);
+		//create the thread for connection
 		pthread_create(&thread[i], NULL, child, (void*)connfd);
+		//detach the thread so resources will be released automatically and
+		//we don't have to wait for it to terminate using pthread_join()
 		pthread_detach(thread[i]);
 	}
 }
