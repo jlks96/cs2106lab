@@ -115,29 +115,7 @@ int linuxScheduler()
 #elif SCHEDULER_TYPE == 1
 
 int RMSScheduler()
-{
-	/* TODO: IMPLEMENT RMS  STYLE SCHEDULER
-	   FUNCTION SHOULD RETURN PROCESS NUMBER OF THE APPROPRIATE  RUNNING PROCESS.
-	   FOR THE CURRENT TIMER TICK.
-
-	   YOU CAN ACCESS THE timerTick GLOBAL VARIABLE.
-
-	   YOU HAVE A VARIABLE CALLED readyQueue WHICH HOLDS A LIST OF PROCESSES
-	   READY TO RUN, AND blockedQueue WHICH HOLDS A LIST OF PROCESSES THAT
-	   ARE BLOCKED. THERE IS A THIRD VARIABLE currProcessNode WHICH SHOULD
-	   POINT TO THE CURRENTLY RUNNING PROCESS DEQUEUED FROM readyQueue,
-	   AND A VARIABLE CALLED suspended WHICH IS USED TO STORE THE INFORMATION
-	   OF A PRE-EMPTED PROCESS.
-
-	   THERE IS ALSO A PROCESS TABLE CALLED processes WHICH IS SET UP 
-	   FOR YOU AND CONTAINS PROCESS INFORMATION. SEE TTCB STRUCTURE
-	   FOR MORE INFORMATION.
-
-	   THIS FUNCTION SHOULD UPDATE THE VARIOUS QUEUES AS IS NEEDED
-	   TO IMPLEMENT SCHEDULING */
-	
-	printList(readyQueue);
-	
+{	
 	//first move everything that are ready to the ready queue
 	TPrioNode *node = checkReady(blockedQueue, timerTick);
 	TTCB *process;
@@ -151,6 +129,7 @@ int RMSScheduler()
 		node = checkReady(blockedQueue, timerTick);
 	}
 
+
 	//first node in ready queue
 	TPrioNode *firstInReadyNode = peek(readyQueue);
 	
@@ -159,17 +138,16 @@ int RMSScheduler()
 		//get the current process
 		TTCB *currProcess = &processes[currProcessNode->procNum];
 
-		//if timeLeft is same as c (meaning clear the previous deadline already)
-		if (currProcess->timeLeft == currProcess->c) {
-			currProcess->deadline = currProcess->deadline + currProcess->p;
-		}
-
-		//if passing deadline, extend the timeLeft by p
-		if (timerTick > currProcess->deadline && currProcess->timeLeft < currProcess->c) {
+		//if passing deadline, extend the timeLeft by c
+		if (timerTick >= currProcess->deadline && currProcess->timeLeft < currProcess->c) {
 			currProcess->timeLeft = currProcess->timeLeft + currProcess->c;
 		}
-
-
+		
+		//if timeLeft is same as c (meaning clear the previous deadline already)
+		//update deadline
+		if (timerTick >= currProcess->deadline && currProcess->timeLeft == currProcess->c) {
+			currProcess->deadline = currProcess->deadline + currProcess->p;
+		}
 
 		//if ready queue is not empty
 		if (firstInReadyNode != NULL) {
