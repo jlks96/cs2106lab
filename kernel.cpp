@@ -7,16 +7,16 @@
 
 /*
 
-   STUDENT 1 NUMBER:
-   STUDENT 1 NAME:
+	STUDENT 1 NUMBER:
+	STUDENT 1 NAME:
 
-   STUDENT 2 NUMBER:
-   STUDENT 2 NAME:
+	STUDENT 2 NUMBER:
+	STUDENT 2 NAME:
 
-   STUDENT 3 NUMBER:
-   STUDENT 3 NAME:
+	STUDENT 3 NUMBER:
+	STUDENT 3 NAME:
 
- */
+	*/
 
 /* OS variables */
 
@@ -96,106 +96,46 @@ int findNextPrio(int currPrio)
 int linuxScheduler()
 {
 	/* TODO: IMPLEMENT LINUX STYLE SCHEDULER
-	   FUNCTION SHOULD RETURN PROCESS NUMBER OF THE APPROPRIATE RUNNING PROCESS
-	   FOR THE CURRENT TIMERTICK.
+		FUNCTION SHOULD RETURN PROCESS NUMBER OF THE APPROPRIATE RUNNING PROCESS
+		FOR THE CURRENT TIMERTICK.
 
-	   YOU CAN ACCESS THE timerTick GLOBAL VARIABLE.
+		YOU CAN ACCESS THE timerTick GLOBAL VARIABLE.
 
-	   YOU HAVE TWO LISTS OF PROCESSES: queueList1 AND queueList2, AND
-	   TWO POINTERS actliveList AND expiredList.
+		YOU HAVE TWO LISTS OF PROCESSES: queueList1 AND queueList2, AND
+		TWO POINTERS actliveList AND expiredList.
 
-	   THERE IS ALSO A PROCESS TABLE CALLED processes WHICH IS SET UP
-	   FOR YOU AND CONTAINS PROCESS INFORMATION. SEE THE TTCB STRUCTURE
-	   FOR DETAILS.
+		THERE IS ALSO A PROCESS TABLE CALLED processes WHICH IS SET UP
+		FOR YOU AND CONTAINS PROCESS INFORMATION. SEE THE TTCB STRUCTURE
+		FOR DETAILS.
 
-	   THIS FUNCTION SHOULD UPDATE THE VARIOUS QUEUES AS IS NEEDED
-	   TO IMPLEMENT SCHEDULING */
+		THIS FUNCTION SHOULD UPDATE THE VARIOUS QUEUES AS IS NEEDED
+		TO IMPLEMENT SCHEDULING */
 	return 0;
 }
 #elif SCHEDULER_TYPE == 1
 
 int RMSScheduler()
-{	
-	//first move everything that are ready to the ready queue
-	TPrioNode *node = checkReady(blockedQueue, timerTick);
-	TTCB *process;
+{
+	/* TODO: IMPLEMENT RMS  STYLE SCHEDULER
+		FUNCTION SHOULD RETURN PROCESS NUMBER OF THE APPROPRIATE  RUNNING PROCESS.
+		FOR THE CURRENT TIMER TICK.
 
-	while(node != NULL) {
-		process = &processes[node->procNum];
-		process->deadline = process->deadline + process->p;
-		process->timeLeft = process->c;
-		prioRemoveNode(&blockedQueue, node);
-		prioInsertNode(&readyQueue, node);
-		node = checkReady(blockedQueue, timerTick);
-	}
+		YOU CAN ACCESS THE timerTick GLOBAL VARIABLE.
 
+		YOU HAVE A VARIABLE CALLED readyQueue WHICH HOLDS A LIST OF PROCESSES
+		READY TO RUN, AND blockedQueue WHICH HOLDS A LIST OF PROCESSES THAT
+		ARE BLOCKED. THERE IS A THIRD VARIABLE currProcessNode WHICH SHOULD
+		POINT TO THE CURRENTLY RUNNING PROCESS DEQUEUED FROM readyQueue,
+		AND A VARIABLE CALLED suspended WHICH IS USED TO STORE THE INFORMATION
+		OF A PRE-EMPTED PROCESS.
 
-	//first node in ready queue
-	TPrioNode *firstInReadyNode = peek(readyQueue);
-	
-	//if currProcessNode is not NULL (meaning previous round was not idle)
-	if (currProcessNode != NULL) { 
-		//get the current process
-		TTCB *currProcess = &processes[currProcessNode->procNum];
+		THERE IS ALSO A PROCESS TABLE CALLED processes WHICH IS SET UP 
+		FOR YOU AND CONTAINS PROCESS INFORMATION. SEE TTCB STRUCTURE
+		FOR MORE INFORMATION.
 
-		//if passing deadline, extend the timeLeft by c
-		if (timerTick >= currProcess->deadline && currProcess->timeLeft < currProcess->c) {
-			currProcess->timeLeft = currProcess->timeLeft + currProcess->c;
-		}
-		
-		//if timeLeft is same as c (meaning clear the previous deadline already)
-		//update deadline
-		if (timerTick >= currProcess->deadline && currProcess->timeLeft == currProcess->c) {
-			currProcess->deadline = currProcess->deadline + currProcess->p;
-		}
-
-		//if ready queue is not empty
-		if (firstInReadyNode != NULL) {
-
-			//if current runing process has finished running for the current run
-			if (currProcess->timeLeft <= 0) {
-
-				prioInsertNode(&blockedQueue, currProcessNode);
-				currProcessNode = prioRemoveNode(&readyQueue, firstInReadyNode);
-
-
-			//if the first process in the ready queue has higher priority than current process
-			} else if (firstInReadyNode->prio < currProcessNode->prio) {
-
-				prioInsertNode(&readyQueue, currProcessNode);
-				currProcessNode = prioRemoveNode(&readyQueue, firstInReadyNode);
-				suspended = currProcessNode;
-			}
-			currProcess = &processes[currProcessNode->procNum];
-			currProcess->timeLeft = currProcess->timeLeft - 1;
-			return currProcessNode->procNum;
-	
-		//if ready queue is emtpy
-		//if current process still have timeLeft
-		} else if (currProcess->timeLeft > 0) {
-			
-			currProcess->timeLeft = currProcess->timeLeft - 1;
-			return currProcessNode->procNum;
-		
-		//if current process has finished running for the current run
-		} else if (currProcess->timeLeft <= 0) {
-			prioInsertNode(&blockedQueue, currProcessNode);
-			currProcessNode = NULL;
-			return -1;
-		}
-
-	//if previous round was idle
-	} else {
-		
-		//if ready queue is no longer empty
-		if (firstInReadyNode != NULL ) {
-			currProcessNode = prioRemoveNode(&readyQueue, firstInReadyNode);
-			TTCB *currProcess = &processes[currProcessNode->procNum];
-			currProcess->timeLeft = currProcess->timeLeft -1;
-			return currProcessNode->procNum;
-		}
-		return -1;
-	}
+		THIS FUNCTION SHOULD UPDATE THE VARIOUS QUEUES AS IS NEEDED
+		TO IMPLEMENT SCHEDULING */
+	return 0;
 }
 
 #endif
@@ -208,7 +148,7 @@ void timerISR()
 #elif SCHEDULER_TYPE == 1
 	currProcess = RMSScheduler();
 #endif
-
+	
 #if SCHEDULER_TYPE == 0
 	static int prevProcess=-1;
 
@@ -219,7 +159,7 @@ void timerISR()
 
 		// Print process details for LINUX scheduler
 		printf("Time: %d Process: %d Prio Level: %d Quantum : %d\n", timerTick, processes[currProcess].procNum+1,
-				processes[currProcess].prio, processes[currProcess].quantum);
+			processes[currProcess].prio, processes[currProcess].quantum);
 		prevProcess=currProcess;
 	}
 #elif SCHEDULER_TYPE == 1
@@ -385,14 +325,14 @@ int addProcess(int p, int c)
 	if(procCount >= NUM_PROCESSES)
 		return -1;
 
-	// Insert process data into the process table
-	processes[procCount].p = p;
-	processes[procCount].c = c;
-	processes[procCount].timeLeft=c;
-	processes[procCount].deadline = p;
+		// Insert process data into the process table
+		processes[procCount].p = p;
+		processes[procCount].c = c;
+		processes[procCount].timeLeft=c;
+		processes[procCount].deadline = p;
 
-	// And add to the ready queue.
-	prioInsert(&readyQueue, procCount, p, p);
+		// And add to the ready queue.
+		prioInsert(&readyQueue, procCount, p, p);
 	procCount++;
 	return 0;
 }
