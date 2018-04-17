@@ -136,6 +136,7 @@ int RMSScheduler()
 	   THIS FUNCTION SHOULD UPDATE THE VARIOUS QUEUES AS IS NEEDED
 	   TO IMPLEMENT SCHEDULING */
 	
+	printList(readyQueue);
 	
 	//first move everything that are ready to the ready queue
 	TPrioNode *node = checkReady(blockedQueue, timerTick);
@@ -154,9 +155,21 @@ int RMSScheduler()
 	TPrioNode *firstInReadyNode = peek(readyQueue);
 	
 	//if currProcessNode is not NULL (meaning previous round was not idle)
-	if (currProcessNode != NULL) {
+	if (currProcessNode != NULL) { 
 		//get the current process
 		TTCB *currProcess = &processes[currProcessNode->procNum];
+
+		//if timeLeft is same as c (meaning clear the previous deadline already)
+		if (currProcess->timeLeft == currProcess->c) {
+			currProcess->deadline = currProcess->deadline + currProcess->p;
+		}
+
+		//if passing deadline, extend the timeLeft by p
+		if (timerTick > currProcess->deadline && currProcess->timeLeft < currProcess->c) {
+			currProcess->timeLeft = currProcess->timeLeft + currProcess->c;
+		}
+
+
 
 		//if ready queue is not empty
 		if (firstInReadyNode != NULL) {
