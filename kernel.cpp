@@ -135,14 +135,13 @@ int RMSScheduler()
 
 	   THIS FUNCTION SHOULD UPDATE THE VARIOUS QUEUES AS IS NEEDED
 	   TO IMPLEMENT SCHEDULING */
-//	printList(blockedQueue);
+	
+	
+	//first move everything that are ready to the ready queue
 	TPrioNode *node = checkReady(blockedQueue, timerTick);
 	TTCB *process;
-//	printf("%s\n", "checking done");
 
-	//first move everything that are ready to the ready queue
 	while(node != NULL) {
-//		printf("%d\n", node->procNum);
 		process = &processes[node->procNum];
 		process->deadline = process->deadline + process->p;
 		process->timeLeft = process->c;
@@ -151,56 +150,59 @@ int RMSScheduler()
 		node = checkReady(blockedQueue, timerTick);
 	}
 
-	printList(readyQueue);
-//	printList(blockedQueue);
-
+	//first node in ready queue
 	TPrioNode *firstInReadyNode = peek(readyQueue);
-	TTCB *currProcess = &processes[currProcessNode->procNum];
+	
+	//if currProcessNode is not NULL (meaning previous round was not idle)
+	if (currProcessNode != NULL) {
+		//get the current process
+		TTCB *currProcess = &processes[currProcessNode->procNum];
 
-	if (firstInReadyNode != NULL) {
-		//if the first process in the ready queue has higher priority than current process
-		if (firstInReadyNode->prio < currProcessNode->prio) {
+		//if ready queue is not empty
+		if (firstInReadyNode != NULL) {
 
-			TTCB *firstInReadyProcess = &processes[firstInReadyNode->procNum];
+			//if current runing process has finished running for the current run
+			if (currProcess->timeLeft <= 0) {
 
-			prioRemoveNode(&readyQueue, firstInReadyNode);
+				prioInsertNode(&blockedQueue, currProcessNode);
+				currProcessNode = prioRemoveNode(&readyQueue, firstInReadyNode);
 
-			if (currProcess->timeLeft > 0) {
+
+			//if the first process in the ready queue has higher priority than current process
+			} else if (firstInReadyNode->prio < currProcessNode->prio) {
+
 				prioInsertNode(&readyQueue, currProcessNode);
+				currProcessNode = prioRemoveNode(&readyQueue, firstInReadyNode);
 				suspended = currProcessNode;
 			}
-
-			currProcessNode = firstInReadyNode;
 			currProcess = &processes[currProcessNode->procNum];
-		} else if (currProcess->timeLeft < 0) {
-			printf("%s\n", "lol");
-			currProcessNode = prioRemoveNode(&readyQueue, firstInReadyNode);
-			currProcess = &processes[currProcessNode->procNum];
-		} else if (currProcess->timeLeft == 0) {
-
-			//if current process has finished running for the current run
-			printf("%s\n", "hahah");
+			currProcess->timeLeft = currProcess->timeLeft - 1;
+			return currProcessNode->procNum;
+	
+		//if ready queue is emtpy
+		//if current process still have timeLeft
+		} else if (currProcess->timeLeft > 0) {
+			
+			currProcess->timeLeft = currProcess->timeLeft - 1;
+			return currProcessNode->procNum;
+		
+		//if current process has finished running for the current run
+		} else if (currProcess->timeLeft <= 0) {
 			prioInsertNode(&blockedQueue, currProcessNode);
-			currProcessNode = prioRemoveNode(&readyQueue, firstInReadyNode);
-			currProcess = &processes[currProcessNode->procNum];
-
+			currProcessNode = NULL;
+			return -1;
 		}
-		currProcess->timeLeft = currProcess->timeLeft - 1;
-		//printf("%d\n", currProcess->timeLeft);
-		return currProcessNode->procNum;
-	} else if (currProcess->timeLeft > 0) {
-		currProcess->timeLeft = currProcess->timeLeft - 1;
-		//printf("%s\n", "overhere");
-		//printf("%d\n", currProcess->timeLeft);
-		return currProcessNode->procNum;
-	} else if (currProcess->timeLeft == 0) {
-		prioInsertNode(&blockedQueue, currProcessNode);
-		currProcess->timeLeft = currProcess->timeLeft - 1;
-		//printf("%d\n", currProcessNode->procNum);
-		//printList(blockedQueue);
-		return -1;
+
+	//if previous round was idle
 	} else {
-//		printf("%s\n", "here"); 
+		
+		//if ready queue is no longer empty
+		if (firstInReadyNode != NULL ) {
+			currProcessNode = prioRemoveNode(&readyQueue, firstInReadyNode);
+			TTCB *currProcess = &processes[currProcessNode->procNum];
+			currProcess->timeLeft = currProcess->timeLeft -1;
+			return currProcessNode->procNum;
+		}
 		return -1;
 	}
 }
