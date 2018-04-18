@@ -95,21 +95,64 @@ int findNextPrio(int currPrio)
 }
 int linuxScheduler()
 {
-	/* TODO: IMPLEMENT LINUX STYLE SCHEDULER
-	   FUNCTION SHOULD RETURN PROCESS NUMBER OF THE APPROPRIATE RUNNING PROCESS
-	   FOR THE CURRENT TIMERTICK.
+	//for the first timerTick
+	if (timerTick == 0) {
 
-	   YOU CAN ACCESS THE timerTick GLOBAL VARIABLE.
+		return currProcess;
 
-	   YOU HAVE TWO LISTS OF PROCESSES: queueList1 AND queueList2, AND
-	   TWO POINTERS actliveList AND expiredList.
+	//if currProcess is on last quantum
+	} else if (processes[currProcess].quantum < 2) {
+		//if there are no more processes in active list
+		if (findNextPrio(currPrio) == -1) {
+			
+			//restore the quantum of the process and insert it into the expired list
+			processes[currProcess].quantum = ((PRIO_LEVELS - 1) - processes[currProcess].prio) * QUANTUM_STEP + QUANTUM_MIN;
+			insert(&expiredList[processes[currProcess].prio],currProcess,processes[currProcess].quantum);
+			destroy(&activeList[currPrio]);
 
-	   THERE IS ALSO A PROCESS TABLE CALLED processes WHICH IS SET UP
-	   FOR YOU AND CONTAINS PROCESS INFORMATION. SEE THE TTCB STRUCTURE
-	   FOR DETAILS.
+			//make the expired list the active list
+			TNode **temp = activeList;
+			activeList = expiredList;
+			expiredList = temp;
+			int nextPrio = findNextPrio(0);
 
-	   THIS FUNCTION SHOULD UPDATE THE VARIOUS QUEUES AS IS NEEDED
-	   TO IMPLEMENT SCHEDULING */
+			//clear the new expired list
+			int i;
+			for(i=0; i<PRIO_LEVELS; i++)
+				expiredList[i]=NULL;
+
+			printf("\n****** SWAPPED LISTS ****\n\n");
+
+			//update nextPID and currPrio
+			int nextPID = remove(&activeList[nextPrio]);
+			currPrio = nextPrio;
+			return nextPID;
+
+		//if the active list is not yet empty
+		// set new process from active list
+		} else {
+			//update nextPID
+			int nextPrio = findNextPrio(currPrio);
+			int nextPID = remove(&activeList[nextPrio]);
+
+			// no more processes with priority == currPrio
+			if (nextPrio != currPrio)
+				destroy(&activeList[currPrio]);
+
+			//restore the quantum of the current process and insert it into the expired list
+			processes[currProcess].quantum = ((PRIO_LEVELS - 1) - processes[currProcess].prio) * QUANTUM_STEP + QUANTUM_MIN;
+			insert(&expiredList[processes[currProcess].prio],currProcess,processes[currProcess].quantum);
+
+			// update currPrio
+			currPrio = nextPrio;
+			return nextPID;
+		}
+	//currProcess still has quantum to run
+	} else {
+		//decrements the quantum
+		processes[currProcess].quantum--;
+		return currProcess;
+	}
 	return 0;
 }
 #elif SCHEDULER_TYPE == 1
@@ -168,6 +211,7 @@ int RMSScheduler()
 				prioInsertNode(&readyQueue, currProcessNode);
 				currProcessNode = prioRemoveNode(&readyQueue, firstInReadyNode);
 				suspended = currProcessNode;
+				printf("\n--- PRE-EMPTION ---\n\n");
 			}
 			currProcess = &processes[currProcessNode->procNum];
 			currProcess->timeLeft = currProcess->timeLeft - 1;
